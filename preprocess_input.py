@@ -24,6 +24,11 @@ def fix_FujiSfM_dicts(root_dir, split):
         v_new = imgs_anns[kk]
         record = {}
         filename = os.path.join(root_dir, 'images', split, v["filename"])
+        print("Trying to read:", filename)
+        img = cv2.imread(filename)
+        if img is None:
+            print("⚠️ Failed to read:", filename)
+            continue
         height, width = cv2.imread(filename).shape[:2]
         annos = v["regions"]
         annos_new = v_new["regions"]
