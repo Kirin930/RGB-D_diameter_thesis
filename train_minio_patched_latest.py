@@ -232,7 +232,7 @@ if __name__ == '__main__':
     experiment_name = args.experiment_name
     dataset_path = args.dataset_path
     bs_per_image = int(args.bs_per_image)
-    weights_file = args.weights
+    #weights_file = args.weights
     freeze_det = int(args.freeze_det)
  # ------------------------------------------------------------------------------------------------------------------------------
 
