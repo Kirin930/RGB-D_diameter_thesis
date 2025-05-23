@@ -232,7 +232,7 @@ if __name__ == '__main__':
     experiment_name = args.experiment_name
     dataset_path = args.dataset_path
     bs_per_image = int(args.bs_per_image)
-    weights_file = args.weights
+    #weights_file = args.weights
     freeze_det = int(args.freeze_det)
  # ------------------------------------------------------------------------------------------------------------------------------
 
@@ -260,7 +260,7 @@ if __name__ == '__main__':
     register_coco_instances(
       "apple_train_minio",
       {},
-      "/content/multitask_RGB-D_FruitDetectionAndSizing/data/annotations/instances_minio.json",
+      "/content/RGB-D_diameter_thesis/data/annotations/instances_minio.json",
       "/mnt/minio/data/images/train"
     )
 
@@ -268,7 +268,7 @@ if __name__ == '__main__':
     cfg.DATASETS.TRAIN = ("apple_train_minio",)
     cfg.DATASETS.TEST = ()
     cfg.TEST.EVAL_PERIOD = 0
-    cfg.MODEL.WEIGHTS = "/content/multitask_RGB-D_FruitDetectionAndSizing/model_0002999.pth"  # Local pretrained weights file
+    cfg.MODEL.WEIGHTS = "/content/RGB-D_diameter_thesis/model_0002999.pth"  # Local pretrained weights file
     cfg.DATASETS.TRAIN = ("FujiSfM_train",)
     cfg.DATASETS.TEST =  ("FujiSfM_val",)
     cfg.DATALOADER.NUM_WORKERS = 4
