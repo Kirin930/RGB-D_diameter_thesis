@@ -38,51 +38,6 @@ import logging
 
 
 
-def mapper(dataset_dict):
-
-    dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
-    # can use other ways to read image
-    image_bgr = utils_detectron.read_image(dataset_dict["file_name"], format="BGR")
-    if not os.path.exists(dataset_dict['depth_file']):
-        print('NO ESISTE',dataset_dict['depth_file'])
- 
-    depth_map = np.load(dataset_dict["depth_file"])
-    try:
-        depth_map = cv2.resize(depth_map, (np.shape(image_bgr[:,:,0])[1],np.shape(image_bgr[:,:,0])[0]), interpolation=cv2.INTER_AREA)
-    
-    except:
-        raise Exception("COULD NOT RESIZE"+dataset_dict['depth_file'])
-
-    image = np.zeros((np.shape(image_bgr)[0],np.shape(image_bgr)[1],4))
-    image[:,:,0:3] = image_bgr
-    image[:,:,3] = depth_map
-    # See "Data Augmentation" tutorial for details usage
-    #augs = T.AugmentationList([
-    #    T.RandomFlip(prob=0.5),
-    #    T.RandomBrightness(0.9, 1.1)
-    #])
-    augs = T.AugmentationList([])
-    auginput = T.AugInput(image)
-    transform = augs(auginput)
-    image = torch.from_numpy(auginput.image.transpose(2, 0, 1).copy())
-    
-    annos = [
-        utils_detectron.transform_instance_annotations(annotation, [transform], image.shape[1:])
-        for annotation in dataset_dict.pop("annotations")
-    ]
-
-    return {
-        # create the format that the model expects
-        "filename":dataset_dict['file_name'],
-        "depth_file":depth_map,
-        "image_id":dataset_dict['image_id'],
-        "height": dataset_dict['height'],
-        "width": dataset_dict['width'],
-        "image": image,  
-        "instances": utils_detectron.annotations_to_instances(annos, image.shape[1:])
-    }
-
-
 class LossEvalHook(HookBase):
     def __init__(self, cfg, model, data_loader):
         self._model = model
@@ -173,6 +128,41 @@ class LossEvalHook(HookBase):
         if is_final or (self._period > 0 and next_iter % self._period == 0):
             self._do_loss_eval()
         self.trainer.storage.put_scalars(timetest=12)
+
+
+import cv2
+import torch
+from detectron2.data import detection_utils as utils
+from detectron2.data import transforms as T
+
+# Load diameter GT once (cache it)
+diameter_dict = {}
+with open("/mnt/minio/data/GT_diameter.txt") as f:
+    for line in f:
+        parts = line.strip().split()
+        if len(parts) == 2:
+            filename, value = parts
+            diameter_dict[filename] = float(value)
+
+# Custom mapper to extend dataset_dicts
+def mapper(dataset_dict):
+    dataset_dict = dataset_dict.copy()
+    image = utils.read_image(dataset_dict["file_name"], format="BGR")
+    transform = T.ResizeShortestEdge([640], 1333)
+    image = transform.get_transform(image).apply_image(image)
+    dataset_dict["image"] = torch.as_tensor(image.transpose(2, 0, 1).astype("float32"))
+
+    # Inject depth_file and diameter
+    fname = os.path.basename(dataset_dict["file_name"]).replace(".png", ".npy")
+    dataset_dict["depth_file"] = f"/mnt/minio/data/depthCropNpy/{fname}"
+
+    if fname.replace(".npy", ".png") in diameter_dict:
+        dataset_dict["diameter"] = diameter_dict[fname.replace(".npy", ".png")]
+    else:
+        raise ValueError(f"Diameter not found for {fname}")
+
+    return dataset_dict
+
 
 from detectron2.engine import DefaultTrainer
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset
